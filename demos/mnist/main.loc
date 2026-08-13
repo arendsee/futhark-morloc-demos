@@ -1,0 +1,72 @@
+module mnist (train)
+
+import tensor-cpp
+import tensor-py
+
+-- Futhark runs every matmul (forward, backward, update, predict); Python supplies
+-- the data and draws the confusion matrix; morloc owns the epoch loop, threading
+-- the weight matrices and dropping the per-step loss it returns.
+source Futhark from "kernels.fut" ("train_step", "predict")
+
+train_step
+  :: Matrix b 64 F32
+  -> Matrix b 10 F32
+  -> Matrix 64 32 F32
+  -> Matrix 32 10 F32
+  -> F32
+  -> (Matrix 64 32 F32, Matrix 32 10 F32, F32)
+
+predict
+  :: Matrix b 64 F32
+  -> Matrix 64 32 F32
+  -> Matrix 32 10 F32
+  -> Vector b I32
+
+
+source Py from "mnist.py"
+  ( "train_x" as trainX
+  , "train_y" as trainY
+  , "test_x" as testX
+  , "test_labels" as testLabels
+  , "init_w1" as initW1
+  , "init_w2" as initW2
+  , "plot_confusion" as plotConfusion
+  )
+
+trainX        :: Matrix n 64 F32
+trainY        :: Matrix n 10 F32
+testX         :: Matrix m 64 F32
+initW1        :: Matrix 64 32 F32
+initW2        :: Matrix 32 10 F32
+testLabels    :: Vector m I32
+
+plotConfusion :: Vector m I32 -> Vector m I32 -> Str -> <IO> Str
+
+-- The epoch loop in morloc: apply a Futhark train step, thread the two weight
+-- matrices forward, drop the loss field, stop when the budget runs out.
+trainLoop
+  :: Int
+  -> Matrix n 64 F32
+  -> Matrix n 10 F32
+  -> Matrix 64 32 F32
+  -> Matrix 32 10 F32
+  -> (Matrix 64 32 F32, Matrix 32 10 F32)
+trainLoop epochs x y w1 w2
+  ? epochs <= 0 = (w1, w2)
+  : epochStep (epochs - 1) x y (train_step x y w1 w2 0.1)
+
+epochStep
+  :: Int
+  -> Matrix n 64 F32
+  -> Matrix n 10 F32
+  -> (Matrix 64 32 F32, Matrix 32 10 F32, F32)
+  -> (Matrix 64 32 F32, Matrix 32 10 F32)
+epochStep epochs x y r = trainLoop epochs x y (.0 r) (.1 r)
+
+--' Train the MLP and write a confusion matrix over a held-out test set.
+--' return: path to the written plot
+train :: Int -> Str -> <IO> Str
+train epochs outpath = do
+  let final = trainLoop epochs trainX trainY initW1 initW2
+  let preds = predict testX (.0 final) (.1 final)
+  plotConfusion testLabels preds outpath

@@ -1,0 +1,27 @@
+module imageEdges (edges)
+
+import tensor-cpp
+import tensor-py
+
+source Futhark from "kernels.fut" ("sobel")
+source Py from "image.py"
+  ( "load_gray" as loadGray
+  , "save_png" as savePng
+  )
+
+sobel    :: Matrix h w F32 -> Matrix h w F32
+loadGray :: Str -> <IO> Matrix h w F32
+savePng  :: Matrix h w F32 -> Str -> <IO> Str
+
+--' Apply Sobel filter to image
+--'
+--' return: path to altered image
+edges ::
+  --' input path
+  --' @file.check r
+  Str ->
+  --' output path
+  Str -> <IO> Str
+edges inpath outpath = do
+  img <- loadGray inpath
+  savePng (sobel img) outpath

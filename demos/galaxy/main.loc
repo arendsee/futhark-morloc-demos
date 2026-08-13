@@ -1,0 +1,60 @@
+module galaxy (simulate)
+
+import tensor-cpp
+import tensor-py
+
+-- Futhark runs the O(n^2) gravity step; Python seeds the galaxy, renders each
+-- frame, and encodes the video; morloc drives the timeline, threading the
+-- (position, velocity) state through each step and rendering as it goes.
+source Futhark from "kernels.fut" ("step")
+source Py from "galaxy.py"
+  ( "init_pos" as initPos
+  , "init_vel" as initVel
+  , "init_mass" as initMass
+  , "render_frame" as renderFrame
+  , "encode_video_gif" as encodeVideo
+  )
+
+step
+  :: Matrix n d F32 -- position
+  -> Matrix n d F32 -- velocity
+  -> Vector n F32   -- mass
+  -> F32            -- time increment
+  -> F32            -- soft
+  -> (Matrix n d F32, Matrix n d F32)
+initPos :: Int -> Matrix n d F32
+initVel :: Int -> Matrix n d F32
+initMass :: Int -> Vector n F32
+renderFrame :: Matrix n d F32 -> Str -> Int -> <IO> ()
+encodeVideo :: Str -> <IO> Str
+
+-- The timestep loop: render the current positions, advance one Futhark step,
+-- recurse. State (pos, vel) is threaded through; a dynamic frame history can't
+-- cross the boundary, so we cross once per step (cheap, in-process).
+runSteps
+  :: Int             -- frame
+  -> Int             -- nsteps
+  -> Matrix n d F32  -- position matrix
+  -> Matrix n d F32  -- velocity matrix
+  -> Vector n F32    -- mass of each body
+  -> Str             -- output directory
+  -> <IO> Int
+runSteps frame nsteps pos vel mass outdir
+  ? nsteps <= 0 = frame
+  : do
+      renderFrame pos outdir frame
+      let (poss, vels) = step pos vel mass 0.02 0.1
+      runSteps (frame + 1) (nsteps - 1) poss vels mass outdir
+
+--' Simulate a rotating disk galaxy and render it to a video.
+--' return: path to the written video
+simulate ::
+  --' Number of bodies
+  Int ->
+  --' Number of steps
+  Int ->
+  --' Output directory
+  Str -> <IO> Str
+simulate nbodies nsteps outdir = do
+  _ <- runSteps 0 nsteps (initPos nbodies) (initVel nbodies) (initMass nbodies) outdir
+  encodeVideo outdir

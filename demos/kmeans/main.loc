@@ -1,0 +1,42 @@
+module kmeans (cluster)
+
+import root-cpp
+import root-py
+import tensor-cpp
+import tensor-py
+import vector-cpp
+import vector-py
+
+-- Python prepares the data and draws the result; Futhark does the O(n*k*d)
+-- per-iteration work; morloc owns the convergence loop, testing the scalar
+-- shift that `step` returns alongside the new centroids.
+source Futhark from "kernels.fut" ("step", "assign")
+source Py from "kmeans.py"
+  ( "make_points" as makePoints
+  , "init_centroids" as initCentroids
+  , "plot_clusters" as plotClusters
+  )
+
+step          :: Matrix n d F32 -> Matrix k d F32 -> (Matrix k d F32, F32)
+assign        :: Matrix n d F32 -> Matrix k d F32 -> Vector n I32
+makePoints    :: Int -> Matrix n d F32
+initCentroids :: Matrix k d F32
+plotClusters  :: Matrix n d F32 -> Vector n I32 -> Matrix k d F32 -> Str -> <IO> Str
+
+-- Lloyd iteration in morloc: apply a Futhark step, stop when centroids stop
+-- moving (or the iteration budget runs out).
+kmeansLoop :: Int -> Matrix n d F32 -> Matrix k d F32 -> Matrix k d F32
+kmeansLoop iters pts cent =
+  let (newCent, shift) = step pts cent
+  in ? iters <= 0 = newCent
+   ? shift < 0.001 = newCent
+   : kmeansLoop (iters - 1) pts newCent
+
+--' Cluster a synthetic point cloud with k-means and write a scatter plot.
+--' return: path to the written plot
+cluster :: Int -> Str -> <IO> Str
+cluster npoints outpath = do
+  let pts = makePoints npoints
+  let final = kmeansLoop 50 pts initCentroids
+  let labels = assign pts final
+  plotClusters pts labels final outpath

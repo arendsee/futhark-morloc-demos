@@ -1,0 +1,4 @@
+./**/*.png
+./**/*.gif
+__pycache__
+*-build/
