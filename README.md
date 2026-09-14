@@ -16,6 +16,8 @@ mim shell
 From within this shell, all the examples in this repo can be built and run with
 `make` commands from each project directory.
 
+These have all been tested on Morloc v0.105.0
+
 ## galaxy: N-body simulations
 
 <img src="./assets/galaxy.gif" width="600">
