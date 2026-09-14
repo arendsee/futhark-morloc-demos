@@ -1,4 +1,6 @@
 name: galaxy
 version: 0.1.0
 license: MIT
-dependencies: []
+py-deps:
+  matplotlib: {version: "*", source: "conda"}
+  imageio: {version: "*", source: "conda"}

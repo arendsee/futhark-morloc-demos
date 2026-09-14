@@ -40,7 +40,7 @@ runSteps
   -> Str             -- output directory
   -> <IO> Int
 runSteps frame nsteps pos vel mass outdir
-  ? nsteps <= 0 = frame
+  ? nsteps <= 0 = do frame
   : do
       renderFrame pos outdir frame
       let (poss, vels) = step pos vel mass 0.02 0.1

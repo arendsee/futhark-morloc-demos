@@ -1,5 +1,21 @@
 # Morloc+Futhark examples
 
+## Morloc Install
+
+```
+# download the Morloc Installation Manager (mim) to ./local/bin/
+curl -fsSL https://raw.githubusercontent.com/morloc-project/morloc-manager/main/scripts/install.sh | sh
+
+# bulid the environment
+mim new --lang futhark
+
+# drop into a shell
+mim shell
+```
+
+From within this shell, all the examples in this repo can be built and run with
+`make` commands from each project directory.
+
 ## galaxy: N-body simulations
 
 <img src="./assets/galaxy.gif" width="600">

@@ -1,7 +1,7 @@
 .PHONY: all clean
 
 all:
-	morloc make -o nexus main.loc
+	morloc make -o nexus -X futhark:backend=multicore main.loc
 	./nexus cluster 300 kmeans.png
 
 clean:

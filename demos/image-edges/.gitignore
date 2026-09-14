@@ -1,2 +1,5 @@
 nexus
+nexus-build/
 out
+edges.png
+__pycache__/

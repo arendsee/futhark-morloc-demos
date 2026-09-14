@@ -1,4 +1,5 @@
 name: kmeans
 version: 0.1.0
 license: MIT
-dependencies: []
+py-deps:
+  matplotlib: {version: "*", source: "conda"}

@@ -1,8 +1,8 @@
 .PHONY: all clean
 
 all:
-	morloc make -o nexus main.loc
-	./nexus edges het.png het-2.png
+	morloc make -o nexus -X futhark:backend=multicore main.loc
+	./nexus edges sample.png edges.png
 
 clean:
-	rm -rf nexus pools __pycache__ *.err
+	rm -rf nexus nexus-build pools __pycache__ *.err edges.png

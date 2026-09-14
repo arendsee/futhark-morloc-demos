@@ -1,9 +1,3 @@
--- A small MLP (64 -> 32 -> 10) trained by full-batch gradient descent. One
--- `train_step` runs the forward pass, backprop, and SGD update, returning the
--- updated weights AND the batch loss as a single tuple -- computing the forward
--- pass exactly once. `predict` returns the argmax class per row. Everything is
--- matmuls, which is what Futhark is for.
-
 let matmul [m][k][n] (x: [m][k]f32) (y: [k][n]f32) : [m][n]f32 =
   let yt = transpose y
   in map (\xr -> map (\yc -> f32.sum (map2 (*) xr yc)) yt) x
@@ -24,9 +18,9 @@ let argmax [n] (xs: [n]f32) : i32 =
            (f32.lowest, 0i32) pairs
   in idx
 
-entry train_step [b] (x: [b][64]f32) (y: [b][10]f32)
-                     (w1: [64][32]f32) (w2: [32][10]f32) (lr: f32)
-    : ([64][32]f32, [32][10]f32, f32) =
+entry train_step [b] (x: [b][784]f32) (y: [b][10]f32)
+                     (w1: [784][32]f32) (w2: [32][10]f32) (lr: f32)
+    : ([784][32]f32, [32][10]f32, f32) =
   let z1 = matmul x w1                 -- [b][32]
   let h = relu2 z1                     -- [b][32]
   let o = matmul h w2                  -- [b][10]
@@ -41,12 +35,12 @@ entry train_step [b] (x: [b][64]f32) (y: [b][10]f32)
   let gW2 = matmul (transpose h) dO                                   -- [32][10]
   let dH = matmul dO (transpose w2)                                   -- [b][32]
   let dZ1 = map2 (\zr dr -> map2 (\zv dv -> if zv > 0f32 then dv else 0f32) zr dr) z1 dH
-  let gW1 = matmul (transpose x) dZ1                                  -- [64][32]
+  let gW1 = matmul (transpose x) dZ1                                  -- [784][32]
   let w1' = map2 (\wr gr -> map2 (\wv gv -> wv - lr * gv) wr gr) w1 gW1
   let w2' = map2 (\wr gr -> map2 (\wv gv -> wv - lr * gv) wr gr) w2 gW2
   in (w1', w2', loss)
 
-entry predict [b] (x: [b][64]f32) (w1: [64][32]f32) (w2: [32][10]f32) : [b]i32 =
+entry predict [b] (x: [b][784]f32) (w1: [784][32]f32) (w2: [32][10]f32) : [b]i32 =
   let h = relu2 (matmul x w1)
   let o = matmul h w2
   in map argmax o
